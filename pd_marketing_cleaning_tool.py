@@ -17,8 +17,8 @@ from config.dropbox_config import get_dropbox_client
 INPUT_FOLDER = "for_processing"
 
 # dropbox folder
-DROPBOX_BASE_PATH = "/List Cleaner & JC DNC"
-# DROPBOX_BASE_PATH = "/Sales and Conversion Cleaner" # for testing
+# DROPBOX_BASE_PATH = "/List Cleaner & JC DNC"
+DROPBOX_BASE_PATH = "/Sales and Conversion Cleaner" # for testing
 
 # output folders
 OUTPUT_CLEANED_FOLDER = "output"
