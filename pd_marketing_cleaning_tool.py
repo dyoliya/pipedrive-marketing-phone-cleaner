@@ -1,8 +1,18 @@
+# -------------------------ABOUT --------------------------
+
+# pyinstaller --onefile --windowed --add-data "config/.env;config" tool_ui.py
+# Tool: Pipedrive Marketing Cleaning Tool
+# Developer: dyoliya
+# Created: 2025-08-06
+
+# © 2025 dyoliya. All rights reserved.
+
+# ---------------------------------------------------------
+
+
 import os
 import re
-import sys
 import dropbox
-from dotenv import load_dotenv
 from glob import glob
 from datetime import datetime
 import pandas as pd
@@ -15,10 +25,12 @@ from config.dropbox_config import get_dropbox_client
 # ----------------------- DIRECTORIES -----------------------
 # input folder
 INPUT_FOLDER = "for_processing"
+os.makedirs("for_processing", exist_ok=True)
+os.makedirs(INPUT_FOLDER, exist_ok=True)
 
 # dropbox folder
-# DROPBOX_BASE_PATH = "/List Cleaner & JC DNC"
-DROPBOX_BASE_PATH = "/Sales and Conversion Cleaner" # for testing
+DROPBOX_BASE_PATH = "/List Cleaner & JC DNC"
+# DROPBOX_BASE_PATH = "/Sales and Conversion Cleaner" # for testing
 
 # output folders
 OUTPUT_CLEANED_FOLDER = "output"

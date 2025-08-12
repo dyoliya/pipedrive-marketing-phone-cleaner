@@ -19,6 +19,9 @@ class MinimalToolUI(ctk.CTk):
         self.geometry("620x480")
         self.configure(fg_color="#273946")  # dark charcoal background
 
+        self.dots_running = False
+        self.dots_count = 0
+
         self.input_folder = "for_processing"
 
         # Title label
@@ -154,7 +157,54 @@ class MinimalToolUI(ctk.CTk):
             return
         self.message_label.configure(text=f"Running on folder: {folder} ...")
         self.progress.set(0)
+        self.dots_running = True
+        self.dots_count = 0
+        self.run_btn.configure(state="disabled")
+        self.animate_dots()
+        self.show_wait_popup()
         threading.Thread(target=self.run_main_process, daemon=True).start()
+
+    def show_wait_popup(self):
+        # Create a top-level window
+        self.wait_popup = ctk.CTkToplevel(self)
+        self.wait_popup.title("Please Wait")
+        self.wait_popup.geometry("300x100")
+        self.wait_popup.resizable(False, False)
+        self.wait_popup.transient(self)  # stay on top of parent
+        self.wait_popup.grab_set()       # block interaction with main window
+
+        # Center text label
+        self.wait_label = ctk.CTkLabel(self.wait_popup,
+                                       text="Processing",
+                                       font=ctk.CTkFont(family="Segoe UI", size=14))
+        self.wait_label.pack(expand=True, pady=20)
+
+        # Animation control
+        self.wait_dots_running = True
+        self.wait_dots_count = 0
+        self.animate_wait_popup()
+
+    def animate_wait_popup(self):
+        if not getattr(self, "wait_dots_running", False):
+            return
+        self.wait_dots_count = (self.wait_dots_count + 1) % 4
+        dots = "." * self.wait_dots_count
+        self.wait_label.configure(text=f"Processing{dots}")
+        self.wait_label.after(500, self.animate_wait_popup)
+
+    def close_wait_popup(self):
+        if hasattr(self, "wait_popup"):
+            self.wait_dots_running = False
+            self.wait_popup.destroy()
+
+    def animate_dots(self):
+            if not self.dots_running:
+                return
+            self.dots_count = (self.dots_count + 1) % 4
+            dots = "." * self.dots_count
+            base_text = f"Running on folder: {self.input_folder}"
+            self.message_label.configure(text=base_text + dots)
+            self.message_label.after(500, self.animate_dots)
 
     def run_main_process(self):
         try:
@@ -164,6 +214,9 @@ class MinimalToolUI(ctk.CTk):
                 sys.stderr = io.StringIO()
 
             cleaning_main()
+            self.dots_running = False
+            self.close_wait_popup() 
+            self.run_btn.configure(state="normal")
             self.update_message("Processing finished successfully!")
             self.progress.set(1.0)
 
@@ -176,6 +229,8 @@ class MinimalToolUI(ctk.CTk):
             self.message_label.after(0, ask_open_folder)
 
         except Exception as e:
+            self.close_wait_popup()
+            self.run_btn.configure(state="normal")
             self.update_message(f"Failed to run tool:\n{e}")
 
     def update_message(self, text):

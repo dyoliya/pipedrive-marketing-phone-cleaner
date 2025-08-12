@@ -2,9 +2,21 @@ import os
 import time
 import requests
 import dropbox
+import sys
 from dotenv import load_dotenv
 
-load_dotenv()
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+dotenv_path = resource_path(os.path.join("config", ".env"))
+
+load_dotenv(dotenv_path)
 
 DROPBOX_CONVERSION_APP_KEY = os.getenv("DROPBOX_CONVERSION_APP_KEY")
 DROPBOX_CONVERSION_APP_SECRET = os.getenv("DROPBOX_CONVERSION_APP_SECRET")

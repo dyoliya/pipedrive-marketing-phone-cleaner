@@ -22,3 +22,6 @@ for_processing/
 # OS files
 .DS_Store
 Thumbs.db
+
+tool_ui.exe
+tool_ui.spec
