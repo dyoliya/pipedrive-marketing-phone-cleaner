@@ -1,6 +1,6 @@
 # 📊 Pipedrive Marketing Cleaning Tool
 
-> **From the list of Pipedrive deals for marketing (with phone numbers), this tool normalizes the Excel data, checks against opt-outs, verifies against existing deals with different stages, and deduplicates to ensure unique valid phone numbers for marketing purposes.**
+> **This tool cleans and normalizes phone numbers from Pipedrive deals, removes duplicates and opt-outs, and delivers a clean list ready for marketing.**
 
 ---
 
