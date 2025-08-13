@@ -142,8 +142,11 @@ def load_pd_phone_numbers():
                                 if len(normalized) == 11 and normalized.startswith("1"):
                                     normalized = normalized[1:]
                                 if len(normalized) == 10 and normalized.isdigit():
-                                    # Store deal_id and deal_pipeline for this phone
-                                    pd_phone_numbers[normalized] = {"deal_id": deal_id, "deal_stage": deal_stage}
+                                    # Store as list to handle multiple deals
+                                    pd_phone_numbers.setdefault(normalized, []).append({
+                                        "deal_id": deal_id,
+                                        "deal_stage": deal_stage
+                                    })
 
                 except Exception as e:
                     print(f"Error reading file {file.path_lower}: {e}")
@@ -261,26 +264,29 @@ def main():
 
                     # ------------------ STEP 2: PD PHONE CHECK ------------------
                     if not disallowed_found and remaining_numbers:
-                        pd_phone_remarks = []
-                        
+                        pd_phone_remarks = set()
 
                         for normalized in remaining_numbers:
                             if normalized in pd_phone_numbers:
-                                existing_deal = pd_phone_numbers[normalized]["deal_id"]
-                                existing_stage = pd_phone_numbers[normalized]["deal_stage"]
-                                current_stage = row.get("Deal - Stage", "")
-                                if existing_stage != current_stage:
-                                    pd_phone_remarks.append(
-                                        f"{normalized} exists in Deal ID {existing_deal} on stage {existing_stage} (PD Phone Numbers)"
-                                    )
+                                existing_entries = pd_phone_numbers[normalized]
+                                for entry in existing_entries:
+                                    existing_deal = entry["deal_id"]
+                                    existing_stage = entry["deal_stage"]
+                                    current_stage = row.get("Deal - Stage", "")
 
+                                    # Only block if stage is different
+                                    if existing_stage != current_stage:
+                                        pd_phone_remarks.add(
+                                            f"{normalized} exists in Deal ID {existing_deal} on stage {existing_stage} (PD Phone Numbers)"
+                                        )
+                                        disallowed_found = True
+
+                        # Combine remarks
                         if pd_phone_remarks:
                             if remarks:
-                                  # If remarks already has something from opt-out step, append
                                 remarks += "; " + "; ".join(pd_phone_remarks)
                             else:
                                 remarks = "; ".join(pd_phone_remarks)
-                            disallowed_found = True
 
 
                         # If still no disallow, keep first unique number
@@ -313,7 +319,11 @@ def main():
 
                     remarks = "; ".join(remarks_list)
 
-                    # ------------------ STEP 4: Append to Cleaned Rows ------------------
+                    # ----- STEP 4: Final Cleaning to Retain Numbers with No Remarks -----
+                    if remarks.strip():
+                        phone_to_use = ""
+
+                    # ------------------ STEP 5: Append to Cleaned Rows ------------------
                     if deal_stage in JR_SALES:
                         cleaned_rows.append({
                             "Carrier": "",
