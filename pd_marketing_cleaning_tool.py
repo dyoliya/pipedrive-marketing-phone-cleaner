@@ -320,8 +320,21 @@ def main():
                     remarks = "; ".join(remarks_list)
 
                     # ----- STEP 4: Final Cleaning to Retain Numbers with No Remarks -----
-                    if remarks.strip():
-                        phone_to_use = ""
+                    non_formatting_remarks = [r for r in remarks_list if r not in format_remarks]
+                    # Apply final rules
+                    if not phone_to_use:
+                        # Case 1: No valid phone, keep all remarks
+                        remarks = "; ".join(remarks_list)  
+                    elif phone_to_use and not non_formatting_remarks:
+                        # Case 2: Valid phone exists and remarks only about formatting
+                        remarks = ""  # discard formatting-only remarks
+                    elif phone_to_use and non_formatting_remarks:
+                        # Case 4: Valid phone exists, but there are other critical issues (opt-out / duplicate)
+                        phone_to_use = ""  # remove all phones
+                        remarks = "; ".join(remarks_list)  # keep all remarks
+                    else:
+                        # Fallback (no remarks, no phone)
+                        remarks = ""
 
                     # ------------------ STEP 5: Append to Cleaned Rows ------------------
                     if deal_stage in JR_SALES:
