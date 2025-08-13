@@ -14,8 +14,11 @@ ctk.set_default_color_theme("dark-blue")  # optional theme
 class MinimalToolUI(ctk.CTk):
     def __init__(self):
         super().__init__()
+        
+        with open("version.txt", "r") as f:
+            version = f.read().strip()  # 'v1.0.1'
 
-        self.title("Pipedrive Marketing Cleaning Tool")
+        self.title(f"Pipedrive Marketing Cleaning Tool {version}")
         self.geometry("620x480")
         self.configure(fg_color="#273946")  # dark charcoal background
 
