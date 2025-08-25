@@ -75,7 +75,8 @@ JR_SALES = [
     "Contact Attempted - Junior Sales",
     "Waiting on Docs - Junior Sales",
     "Generate Offer - Recycling",
-    "Document Auditing - Recycling"
+    "Document Auditing - Recycling",
+    "Update Offer - TM Recycling"
 ]
 
 SALES = [
