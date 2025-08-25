@@ -70,10 +70,12 @@ CONVERSION_QUALIFYING = [
 ]
 
 JR_SALES = [
-    "Staging",
+    "Staging - Junior Sales",
     "Updated Offer",
     "Contact Attempted - Junior Sales",
-    "Waiting on Docs - Junior Sales"
+    "Waiting on Docs - Junior Sales",
+    "Generate Offer - Recycling",
+    "Document Auditing - Recycling"
 ]
 
 SALES = [
