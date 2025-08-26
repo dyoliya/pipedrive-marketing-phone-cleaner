@@ -15,7 +15,7 @@ tests/
 build/
 dist
 
-# Output folders
+# data folders
 output/
 for_processing/
 
@@ -23,5 +23,6 @@ for_processing/
 .DS_Store
 Thumbs.db
 
-tool_ui.exe
-tool_ui.spec
+*.exe
+*.spec
+*.zip

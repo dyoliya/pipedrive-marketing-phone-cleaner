@@ -1,6 +1,6 @@
 # -------------------------ABOUT --------------------------
 
-# pyinstaller --onefile --windowed --add-data "config/.env;config" tool_ui.py
+# pyinstaller --onefile --add-data "config/.env;config" tool_ui.py
 # Tool: Pipedrive Marketing Cleaning Tool
 # Developer: dyoliya
 # Created: 2025-08-06
@@ -58,34 +58,30 @@ PHONE_FIELDS = [
 
 ]
 
-# ----------------------- DEAL STAGES -----------------------
-
-CONVERSION_QUALIFYING = [
-    "Active Leads - Qualifying",
-    "Active Leads - Website Email Only",
-    "Active Leads - Abandoned",
-    "Cold Deals - Priority 2",
-    "Cold Deals - Priority 3",
-    "Cold Deals - Priority 4"
-]
-
-JR_SALES = [
-    "Staging - Junior Sales",
-    "Updated Offer",
-    "Contact Attempted - Junior Sales",
-    "Waiting on Docs - Junior Sales",
-    "Generate Offer - Recycling",
-    "Document Auditing - Recycling",
-    "Update Offer - TM Recycling"
-]
-
-SALES = [
-    "Staging - Mid Sales",
-    "Contact Attempted - Mid Sales",
-    "Waiting on Docs - Mid Sales"
-]
-
 # ------------------ FUNCTIONS ------------------
+def check_required_columns(df, file_path):
+    required_columns = [
+        "Deal - ID",
+        "Deal - Contact person",
+        "Deal - Owner",
+        "Deal - County",
+        "Deal - Stage"
+    ]
+
+    missing = [col for col in required_columns if col not in df.columns]
+    has_phone_field = any(col in df.columns for col in PHONE_FIELDS)
+
+    if missing or not has_phone_field:
+        msg_parts = []
+        if missing:
+            msg_parts.append(f"\n- {', '.join(missing)}")
+        if not has_phone_field:
+            msg_parts.append("\n- at least 1 valid phone field")
+        
+        print(f"\n⚠️  Skipping {os.path.basename(file_path)} due to missing column/s:{''.join(msg_parts)}")
+        return False
+
+    return True
 
 def normalize_phone(number):
     return re.sub(r"[^\d]", "", str(number))
@@ -201,10 +197,11 @@ def main():
     dropbox_numbers = load_opt_out_phone_numbers()
     pd_phone_numbers = load_pd_phone_numbers()
     input_files = glob(os.path.join(INPUT_FOLDER, "*.xlsx"))
-
     for file_path in tqdm(input_files, desc="Processing input files"):
         try:
             df = pd.read_excel(file_path, engine='openpyxl', dtype=str)
+            if not check_required_columns(df, file_path):
+                continue
             df.fillna("", inplace=True)
             cleaned_rows = []
             
@@ -340,8 +337,7 @@ def main():
                         remarks = ""
 
                     # ------------------ STEP 5: Append to Cleaned Rows ------------------
-                    if deal_stage in JR_SALES:
-                        cleaned_rows.append({
+                    cleaned_rows.append({
                             "Carrier": "",
                             "Deal - ID": deal_id,
                             "Phone Number": phone_to_use,
@@ -352,28 +348,7 @@ def main():
                             "Deal - Title": row.get("Deal - Title", ""),
                             "Deal - Stage": deal_stage,
                             "Remarks": remarks
-                        })
-                    elif deal_stage in SALES:
-                        cleaned_rows.append({
-                            "Carrier": "",
-                            "Deal - ID": deal_id,
-                            "Phone Number": phone_to_use,
-                            "First Name": first_name,
-                            "Deal - Owner": deal_owner_fn,
-                            "Deal - County": formatted_county,
-                            "Deal - Title": row.get("Deal - Title", ""),
-                            "Deal - Stage": deal_stage,
-                            "Remarks": remarks
-                        })
-                    elif deal_stage in CONVERSION_QUALIFYING:
-                        cleaned_rows.append({
-                            "Carrier": "",
-                            "Deal - ID": deal_id,
-                            "Phone Number": phone_to_use,
-                            "First Name": first_name,
-                            "Deal - Stage": deal_stage,
-                            "Remarks": remarks
-                        })
+                    })
 
                 except Exception as row_err:
                     print(f"⚠️ Skipping row {idx} in {os.path.basename(file_path)}: {row_err}")
