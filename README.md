@@ -4,7 +4,7 @@
 
 ---
 
-![Version](https://img.shields.io/badge/version-1.0.1-ffab4c?style=for-the-badge&logo=python&logoColor=white)
+![Version](https://img.shields.io/badge/version-1.0.4-ffab4c?style=for-the-badge&logo=python&logoColor=white)
 ![Python](https://img.shields.io/badge/python-3.9%2B-273946?style=for-the-badge&logo=python&logoColor=ffab4c)
 ![Status](https://img.shields.io/badge/status-active-273946?style=for-the-badge&logo=github&logoColor=ffab4c)
 
@@ -156,15 +156,6 @@ Before running the tool, you need to set up your Dropbox app credentials and gen
 
 ---
 
-## 📌 Version History
-1.0.1 (Patch)
-
-Improved folder handling (auto-create input folder)
-
-UI Run button now locks during processing
-
-Fixed .env loading for packaged executable
-
-1.0.0
-
-Initial release with core cleaning, deduplication, and opt-out checks.
+## 👩‍💻 Credits
+- **2025-08-06**: Project created by **Julia** ([@dyoliya](https://github.com/dyoliya))  
+- 2025–present: Maintained by **Julia** for **Community Minerals II, LLC**
