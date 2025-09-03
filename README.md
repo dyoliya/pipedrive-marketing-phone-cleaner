@@ -1,6 +1,6 @@
-# 📊 Pipedrive Marketing Cleaning Tool
+# 📊 Pipedrive Marketing Phone Cleaner
 
-> **This tool cleans and normalizes phone numbers from Pipedrive deals, removes duplicates and opt-outs, and delivers a clean list ready for marketing.**
+> **Cleans and normalizes phone numbers from Pipedrive deals, removes duplicates and opt-outs, and outputs a clean list for marketing use.**
 
 ---
 
