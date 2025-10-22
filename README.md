@@ -4,7 +4,7 @@
 
 ---
 
-![Version](https://img.shields.io/badge/version-1.1.0-ffab4c?style=for-the-badge&logo=python&logoColor=white)
+![Version](https://img.shields.io/badge/version-1.2.0-ffab4c?style=for-the-badge&logo=python&logoColor=white)
 ![Python](https://img.shields.io/badge/python-3.9%2B-273946?style=for-the-badge&logo=python&logoColor=ffab4c)
 ![Status](https://img.shields.io/badge/status-active-273946?style=for-the-badge&logo=github&logoColor=ffab4c)
 
@@ -18,10 +18,12 @@
 - **Opt-Out List Integration:** Downloads and checks phone numbers against opt-out lists stored in Dropbox (e.g., DNC (Cold-PD).csv and CallTextOut-7d (PD).csv), marking flagged numbers with remarks.
 - **Existing Pipedrive Phone Cross-Check:** Fetches phone numbers from Dropbox’s pd_phone folder and flags numbers that exist in other deals with different stages, preventing duplication or conflicting marketing outreach.
 - **Duplicate Detection Within Input Files:** Tracks phone numbers processed within the current batch to avoid duplicates across deals, annotating duplicates with appropriate remarks.
-- **Customizable Deal Stage Handling:** Segregates and formats cleaned data differently based on deal stages such as Junior Sales, Sales, and Conversion Qualifying.
 - **Detailed Remarks and Reporting:** Provides comprehensive remarks per record, noting phone format issues, opt-out presence, existing deal conflicts, and duplicate status to aid downstream decisions.
 - **Robust Error Handling:** Skips problematic rows with clear console warnings.
-- **Outputs Cleaned Data:** Saves cleaned and processed data files suffixed with `_cleaned.xlsx` into the output folder for easy access and further marketing workflows.
+- **Combined Excel Output per Run:** Consolidates all cleaned results from each run into a single Excel workbook, with each input file saved as its own sheet.
+- **Carrier Sheet & Lookup Formula:** Adds an empty `carrier` sheet at the end and applies the formula `=VLOOKUP(C2,carrier!A:C,3,FALSE)` to the **Carrier** column in each sheet (column **C** refers to the **Phone Number** column).
+- **Timestamped Filenames:** Output file names now follow this format: `yyyymmdd_HHMMSS_pd_mktg_combined_output.xlsx` for clear version tracking.
+
 
 ---
 
