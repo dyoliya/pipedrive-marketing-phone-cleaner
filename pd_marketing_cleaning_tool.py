@@ -21,6 +21,9 @@ from io import StringIO
 from io import BytesIO
 from collections import defaultdict
 from config.dropbox_config import get_dropbox_client
+from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter
+from datetime import datetime
 
 # ----------------------- DIRECTORIES -----------------------
 # input folder
@@ -197,6 +200,7 @@ def main():
     dropbox_numbers = load_opt_out_phone_numbers()
     pd_phone_numbers = load_pd_phone_numbers()
     input_files = glob(os.path.join(INPUT_FOLDER, "*.xlsx"))
+    cleaned_data = {}
     for file_path in tqdm(input_files, desc="Processing input files"):
         try:
             df = pd.read_excel(file_path, engine='openpyxl', dtype=str)
@@ -356,15 +360,45 @@ def main():
 
             if cleaned_rows:
                 cleaned_df = pd.DataFrame(cleaned_rows)
-                output_path = os.path.join(
-                    OUTPUT_CLEANED_FOLDER,
-                    os.path.basename(file_path).replace(".xlsx", "_cleaned.xlsx")
-                )
-                cleaned_df.to_excel(output_path, index=False)
+                sheet_name = os.path.splitext(os.path.basename(file_path))[0][:31]
+                cleaned_data[sheet_name] = cleaned_df
 
         except Exception as e:
             print(f"Error processing {file_path}: {e}")
 
+ # ------------- COMBINE INTO ONE EXCEL FILE -------------
+    if cleaned_data:
+        date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        combined_output = os.path.join(OUTPUT_CLEANED_FOLDER, f"{date_str}_pd_mktg_combined_output.xlsx")
+
+        with pd.ExcelWriter(combined_output, engine="openpyxl") as writer:
+            for sheet_name, df in cleaned_data.items():
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+            # Add empty 'carrier' sheet
+            empty_df = pd.DataFrame()
+            empty_df.to_excel(writer, sheet_name="carrier", index=False)
+
+        # ------------- ADD FORMULAS USING OPENPYXL -------------
+        wb = load_workbook(combined_output)
+        for sheet_name in cleaned_data.keys():
+            ws = wb[sheet_name]
+
+            # Find column index for "Carrier" and "Phone Number"
+            headers = [cell.value for cell in ws[1]]
+            try:
+                carrier_col = headers.index("Carrier") + 1
+                phone_col = headers.index("Phone Number") + 1
+            except ValueError:
+                continue  # skip if missing
+
+            # Apply formula =VLOOKUP(C2,carrier!A:C,3,FALSE)
+            for row_idx in range(2, ws.max_row + 1):
+                formula = f'=VLOOKUP({get_column_letter(phone_col)}{row_idx},carrier!A:C,3,FALSE)'
+                ws.cell(row=row_idx, column=carrier_col).value = formula
+
+        wb.save(combined_output)
+        print(f"\n✅ Combined cleaned file saved to: {combined_output}")
     
 if __name__ == "__main__":
     main()
