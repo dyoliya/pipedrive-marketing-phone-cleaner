@@ -89,9 +89,12 @@ def check_required_columns(df, file_path):
 def normalize_phone(number):
     return re.sub(r"[^\d]", "", str(number))
 
-def load_opt_out_phone_numbers():
+def load_opt_out_phone_numbers(csv_filenames=None):
     dbx = get_dropbox_client()
-    csv_filenames = ["DNC (Cold-PD).csv", "CallTextOut-7d (PD).csv"]
+
+    # Default CSVs if none specified
+    if csv_filenames is None:
+        csv_filenames = ["DNC (Cold-PD).csv", "CallTextOut-7d (PD).csv"]
     numbers = defaultdict(set)  # phone -> set of filenames
 
     for filename in csv_filenames:
@@ -197,10 +200,12 @@ def format_deal_county(deal_county):
 
 def main():
     seen_normalized_numbers = {}
-    dropbox_numbers = load_opt_out_phone_numbers()
     pd_phone_numbers = load_pd_phone_numbers()
     input_files = glob(os.path.join(INPUT_FOLDER, "*.xlsx"))
     cleaned_data = {}
+    
+    opt_out_cache = {}
+
     for file_path in tqdm(input_files, desc="Processing input files"):
         try:
             df = pd.read_excel(file_path, engine='openpyxl', dtype=str)
@@ -215,6 +220,18 @@ def main():
                     remarks = ""
                     deal_id = row.get("Deal - ID", "")
                     deal_stage = row.get("Deal - Stage", "")
+                    if deal_stage == "Cold Deals - Priority 2":
+                        key = "cold"
+                        csvs_to_check = ["DNC (Cold-PD).csv", "CallOut-14d+TextOut-30d (Cold).csv"]
+                    else:
+                        key = "normal"
+                        csvs_to_check = ["DNC (Cold-PD).csv", "CallTextOut-7d (PD).csv"]
+
+                    if key not in opt_out_cache:
+                        opt_out_cache[key] = load_opt_out_phone_numbers(csvs_to_check)
+
+                    dropbox_numbers = opt_out_cache[key]
+
                     contact_person = row.get("Deal - Contact person", "")
                     deal_title = row.get("Deal - Title", "")
                     first_name = extract_first_name(contact_person, deal_title)
