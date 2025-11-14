@@ -15,7 +15,7 @@
 - **Automatic Folder Management:** Creates and uses `for_processing` as the input folder for Excel files and `output` as the destination folder for cleaned results.
 - **Multi-Source Phone Number Handling:** Processes multiple phone fields from Pipedrive deal data including work, home, mobile, and archived numbers.
 - **Normalization and Validation:** Normalizes phone numbers by stripping non-digit characters and standardizing to 10-digit US-style numbers (removes leading ‘1’ if present).
-- **Opt-Out List Integration:** Downloads and checks phone numbers against opt-out lists stored in Dropbox (e.g., DNC (Cold-PD).csv and CallTextOut-7d (PD).csv), marking flagged numbers with remarks.
+- **Opt-Out List Integration:** Downloads and checks phone numbers against opt-out lists stored in Dropbox (e.g., `DNC (Cold-PD).xlsx`, `CallTextOut-7d (PD).xlsx`, and `CallOut-14d+TextOut-30d (Cold).xlsx`), marking flagged numbers with remarks.
 - **Existing Pipedrive Phone Cross-Check:** Fetches phone numbers from Dropbox’s pd_phone folder and flags numbers that exist in other deals with different stages, preventing duplication or conflicting marketing outreach.
 - **Duplicate Detection Within Input Files:** Tracks phone numbers processed within the current batch to avoid duplicates across deals, annotating duplicates with appropriate remarks.
 - **Detailed Remarks and Reporting:** Provides comprehensive remarks per record, noting phone format issues, opt-out presence, existing deal conflicts, and duplicate status to aid downstream decisions.
