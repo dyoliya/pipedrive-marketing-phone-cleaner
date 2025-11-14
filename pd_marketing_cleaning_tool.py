@@ -89,27 +89,31 @@ def check_required_columns(df, file_path):
 def normalize_phone(number):
     return re.sub(r"[^\d]", "", str(number))
 
-def load_opt_out_phone_numbers(csv_filenames=None):
+def load_opt_out_phone_numbers(excel_filenames=None):
     dbx = get_dropbox_client()
 
-    # Default CSVs if none specified
-    if csv_filenames is None:
-        csv_filenames = ["DNC (Cold-PD).csv", "CallTextOut-7d (PD).csv"]
+    # Default Excel files if none specified
+    if excel_filenames is None:
+        excel_filenames = ["DNC (Cold-PD).xlsx", "CallTextOut-7d (PD).xlsx"]
+    
     numbers = defaultdict(set)  # phone -> set of filenames
 
-    for filename in csv_filenames:
+    for filename in excel_filenames:
         path = f"{DROPBOX_BASE_PATH}/{filename}"
         try:
+            # Download file from Dropbox
             metadata, response = dbx.files_download(path)
-            content = response.content.decode("utf-8").strip()
-            if not content:
-                continue
-            df = pd.read_csv(StringIO(content), header=None, dtype=str)
-            if df.empty or 0 not in df.columns:
-                continue
-            nums = df[0].dropna().astype(str).map(normalize_phone)
-            for num in nums:
-                numbers[num].add(filename)  # add filename to set
+            content = BytesIO(response.content)
+            
+            # Read all sheets
+            xls = pd.ExcelFile(content)
+            for sheet_name in xls.sheet_names:
+                df = pd.read_excel(xls, sheet_name=sheet_name, header=None, dtype=str)
+                if df.empty or 0 not in df.columns:
+                    continue
+                nums = df[0].dropna().astype(str).map(normalize_phone)
+                for num in nums:
+                    numbers[num].add(filename)  # track which file(s) the number came from
         except Exception as e:
             print(f"Error reading Dropbox file {path}: {e}")
 
@@ -222,13 +226,20 @@ def main():
                     deal_stage = row.get("Deal - Stage", "")
                     if deal_stage == "Cold Deals - Priority 2":
                         key = "cold"
-                        csvs_to_check = ["DNC (Cold-PD).csv", "CallOut-14d+TextOut-30d (Cold).csv"]
+                        excel_files_to_check = [
+                            "DNC (Cold-PD).xlsx",
+                            "CallOut-14d+TextOut-30d (Cold).xlsx"
+                        ]
                     else:
                         key = "normal"
-                        csvs_to_check = ["DNC (Cold-PD).csv", "CallTextOut-7d (PD).csv"]
+                        excel_files_to_check = [
+                            "DNC (Cold-PD).xlsx",
+                            "CallTextOut-7d (PD).xlsx"
+                        ]
 
                     if key not in opt_out_cache:
-                        opt_out_cache[key] = load_opt_out_phone_numbers(csvs_to_check)
+                        opt_out_cache[key] = load_opt_out_phone_numbers(excel_files_to_check)
+                        print(excel_files_to_check)
 
                     dropbox_numbers = opt_out_cache[key]
 
