@@ -167,16 +167,19 @@ def load_pd_phone_numbers():
 def extract_first_name(contact_person, deal_title):
     name = str(contact_person).strip()
 
-    # If name is missing or "No Name"/"Unknown"
-    if not name or re.search(r"\b(no name|unknown)\b", name, re.IGNORECASE):
+    # Normalize: remove all extra spaces (including between letters) and lowercase
+    normalized = re.sub(r"[^a-zA-Z]", "", name).lower()
+
+    # Check for placeholders like "noname" or "unknown"
+    if not name or normalized in ["noname", "unknown", "uunknown", "nunknown"]:
         title = str(deal_title).strip()
-        if not re.match(r"(?i)^no name|^unknown", title):
-            return title.split()[0].capitalize() if title else ""
+        if title and not re.match(r"(?i)^no name|^unknown", title):
+            return title.split()[0].capitalize()
         return ""
 
-    # Always take the first word before space or slash
+    # Otherwise, take first word before space or slash
     first_word = re.split(r"[ /]", name)[0].strip()
-    
+
     return first_word.capitalize()
 
 def extract_deal_owner(deal_owner):
