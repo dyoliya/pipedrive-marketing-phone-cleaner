@@ -6,6 +6,7 @@ __pycache__/
 
 # Environment variables file (contains secrets)
 config/.env
+*.json
 
 # Virtual environments
 venv/

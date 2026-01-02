@@ -25,20 +25,9 @@ jobs:
           pip install pyinstaller
           pip install -r requirements.txt
 
-      - name: Create .env file
-        shell: pwsh
-        run: |
-          if (-not (Test-Path -Path "config")) {
-            mkdir config
-          }
-          echo "DROPBOX_CONVERSION_ACCESS_TOKEN=${{ secrets.DROPBOX_CONVERSION_ACCESS_TOKEN }}" >> config/.env
-          echo "DROPBOX_CONVERSION_APP_KEY=${{ secrets.DROPBOX_CONVERSION_APP_KEY }}" >> config/.env
-          echo "DROPBOX_CONVERSION_APP_SECRET=${{ secrets.DROPBOX_CONVERSION_APP_SECRET }}" >> config/.env
-          echo "DROPBOX_CONVERSION_REFRESH_TOKEN=${{ secrets.DROPBOX_CONVERSION_REFRESH_TOKEN }}" >> config/.env
-
       - name: Build executable with PyInstaller
         run: |
-          pyinstaller --onefile --name pd_marketing_cleaning_tool --add-data "config/.env;config" tool_ui.py
+          pyinstaller --onefile --name pd_marketing_cleaning_tool tool_ui.py
 
       - name: Create Release
         uses: softprops/action-gh-release@v1

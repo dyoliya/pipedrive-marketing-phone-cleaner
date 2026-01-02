@@ -1,6 +1,6 @@
 # -------------------------ABOUT --------------------------
 
-# pyinstaller --onefile --add-data "config/.env;config" tool_ui.py
+# pyinstaller --onefile tool_ui.py
 # Tool: Pipedrive Marketing Cleaning Tool
 # Developer: dyoliya
 # Created: 2025-08-06
@@ -12,7 +12,6 @@
 
 import os
 import re
-import dropbox
 from glob import glob
 from datetime import datetime
 import pandas as pd
@@ -20,20 +19,23 @@ from tqdm import tqdm
 from io import StringIO
 from io import BytesIO
 from collections import defaultdict
-from config.dropbox_config import get_dropbox_client
+from config.gdrive_client import download_file_by_id, list_files_in_folder
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 from datetime import datetime
+import json
+
+with open("config/gdrive_files.json", "r") as f:
+    GDRIVE_FILES = json.load(f)
+
+with open("config/gdrive_folders.json", "r") as f:
+    GDRIVE_FOLDERS = json.load(f)
 
 # ----------------------- DIRECTORIES -----------------------
 # input folder
 INPUT_FOLDER = "for_processing"
 os.makedirs("for_processing", exist_ok=True)
 os.makedirs(INPUT_FOLDER, exist_ok=True)
-
-# dropbox folder
-DROPBOX_BASE_PATH = "/List Cleaner & JC DNC"
-# DROPBOX_BASE_PATH = "/Sales and Conversion Cleaner" # for testing
 
 # output folders
 OUTPUT_CLEANED_FOLDER = "output"
@@ -90,77 +92,78 @@ def normalize_phone(number):
     return re.sub(r"[^\d]", "", str(number))
 
 def load_opt_out_phone_numbers(excel_filenames=None):
-    dbx = get_dropbox_client()
-
     # Default Excel files if none specified
     if excel_filenames is None:
         excel_filenames = ["DNC (Cold-PD).xlsx", "CallTextOut-7d (PD).xlsx"]
     
     numbers = defaultdict(set)  # phone -> set of filenames
 
-    for filename in excel_filenames:
-        path = f"{DROPBOX_BASE_PATH}/{filename}"
+    for name in excel_filenames:
+        clean_name = name.replace(".xlsx", "")
+        file_id = GDRIVE_FILES.get(clean_name)
+
+        if not file_id:
+            print(f"⚠️ Missing GDrive file ID for {name}")
+            continue
+
         try:
-            # Download file from Dropbox
-            metadata, response = dbx.files_download(path)
-            content = BytesIO(response.content)
-            
-            # Read all sheets
+            content = download_file_by_id(file_id)
             xls = pd.ExcelFile(content)
+
             for sheet_name in xls.sheet_names:
                 df = pd.read_excel(xls, sheet_name=sheet_name, header=None, dtype=str)
                 if df.empty or 0 not in df.columns:
                     continue
+
                 nums = df[0].dropna().astype(str).map(normalize_phone)
                 for num in nums:
-                    numbers[num].add(filename)  # track which file(s) the number came from
-        except Exception as e:
-            print(f"Error reading Dropbox file {path}: {e}")
+                    numbers[num].add(name)
 
+        except Exception as e:
+            print(f"Error reading GDrive file {name}: {e}")
     return numbers
 
 def load_pd_phone_numbers():
-    dbx = get_dropbox_client()
-    pd_phone_folder = f"{DROPBOX_BASE_PATH}/pd_phone"
-    pd_phone_numbers = {} 
+    pd_phone_numbers = {}
+    folder_id = GDRIVE_FOLDERS["pd_phone"]
 
     try:
-        res = dbx.files_list_folder(pd_phone_folder)
-        files = res.entries
-        while res.has_more:
-            res = dbx.files_list_folder_continue(res.cursor)
-            files.extend(res.entries)
+        files = list_files_in_folder(folder_id)
 
         for file in files:
-            if isinstance(file, dropbox.files.FileMetadata) and file.name.endswith(".xlsx"):
-                try:
-                    metadata, response = dbx.files_download(file.path_lower)
-                    content = response.content
-                    df = pd.read_excel(BytesIO(content), engine='openpyxl', dtype=str)
-                    df.fillna("", inplace=True)
+            if not file["name"].endswith(".xlsx"):
+                continue
 
-                    for idx, row in df.iterrows():
-                        deal_id = row.get("Deal - ID", "")
-                        deal_stage = row.get("Deal - Stage", "")
-                        for field in PHONE_FIELDS:
-                            raw_phones = str(row.get(field, ""))
-                            if not raw_phones.strip():
-                                continue
-                            for phone in map(str.strip, raw_phones.split(",")):
-                                normalized = normalize_phone(phone)
-                                if len(normalized) == 11 and normalized.startswith("1"):
-                                    normalized = normalized[1:]
-                                if len(normalized) == 10 and normalized.isdigit():
-                                    # Store as list to handle multiple deals
-                                    pd_phone_numbers.setdefault(normalized, []).append({
-                                        "deal_id": deal_id,
-                                        "deal_stage": deal_stage
-                                    })
+            try:
+                content = download_file_by_id(file["id"])
+                df = pd.read_excel(content, engine="openpyxl", dtype=str)
+                df.fillna("", inplace=True)
 
-                except Exception as e:
-                    print(f"Error reading file {file.path_lower}: {e}")
+                for _, row in df.iterrows():
+                    deal_id = row.get("Deal - ID", "")
+                    deal_stage = row.get("Deal - Stage", "")
+
+                    for field in PHONE_FIELDS:
+                        raw_phones = str(row.get(field, ""))
+                        if not raw_phones.strip():
+                            continue
+
+                        for phone in map(str.strip, raw_phones.split(",")):
+                            normalized = normalize_phone(phone)
+                            if len(normalized) == 11 and normalized.startswith("1"):
+                                normalized = normalized[1:]
+                            if len(normalized) == 10 and normalized.isdigit():
+                                # Store as list to handle multiple deals
+                                pd_phone_numbers.setdefault(normalized, []).append({
+                                    "deal_id": deal_id,
+                                    "deal_stage": deal_stage
+                                })
+
+            except Exception as e:
+                print(f"Error reading file {file['name']}: {e}")
+
     except Exception as e:
-        print(f"Error reading Dropbox folder {pd_phone_folder}: {e}")
+        print(f"Error reading GDrive pd_phone folder: {e}")
 
     return pd_phone_numbers
 
@@ -244,7 +247,7 @@ def main():
                         opt_out_cache[key] = load_opt_out_phone_numbers(excel_files_to_check)
                         print(excel_files_to_check)
 
-                    dropbox_numbers = opt_out_cache[key]
+                    gdrive_numbers = opt_out_cache[key]
 
                     contact_person = row.get("Deal - Contact person", "")
                     deal_title = row.get("Deal - Title", "")
@@ -281,8 +284,8 @@ def main():
                                 )
                                 continue
 
-                            if normalized in dropbox_numbers:
-                                for fname in dropbox_numbers[normalized]:
+                            if normalized in gdrive_numbers:
+                                for fname in gdrive_numbers[normalized]:
                                     opt_out_matches[fname].append(normalized)
                             else:
                                 remaining_numbers.append(normalized)
