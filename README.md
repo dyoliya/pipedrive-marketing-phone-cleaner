@@ -24,7 +24,56 @@
 - **Carrier Sheet & Lookup Formula:** Adds an empty `carrier` sheet at the end and applies the formula `=VLOOKUP(C2,carrier!A:C,3,FALSE)` to the **Carrier** column in each sheet (column **C** refers to the **Phone Number** column).
 - **Timestamped Filenames:** Output file names now follow this format: `yyyymmdd_HHMMSS_pd_mktg_combined_output.xlsx` for clear version tracking.
 
-
+---
+## 🧠 Logic Flow
+1. User provides files
+   - User places Excel files into the for_processing folder.
+   - Only .xlsx files are processed (CSV files are not included).
+2. Tool checks file requirements
+   - Each file must include the following columns:
+     - Deal - ID
+     - Deal - Contact person
+     - Deal - Owner
+     - Deal - County
+     - Deal - Stage
+   - Each file must also contain at least one supported phone column (for example: Person - Phone - Mobile, Person - Phone - Work, etc.).
+   - If required columns are missing, the file is skipped.
+3. Tool scans supported phone fields
+   - Phone values are read from the supported phone columns.
+   - Multiple phone numbers within a cell are allowed if separated by commas.
+4. Phone numbers are normalized
+   - Symbols and spaces are removed so only digits remain.
+   - If a number becomes 11 digits starting with 1, the leading 1 is removed.
+   - Only 10-digit numbers are treated as valid after normalization.
+   - Invalid formats are recorded in the Remarks column.
+5. Opt-out checking occurs first (Google Drive sources)
+   - The tool downloads opt-out lists from Google Drive and compares each valid phone number.
+   - The specific lists used depend on the deal stage:
+     - If Deal - Stage = Cold Deals - Priority 2
+       - DNC (Cold-PD).xlsx
+       - CallOut-14d+TextOut-30d (Cold).xlsx
+     - All other stages
+       - DNC (Cold-PD).xlsx
+       - CallTextOut-7d (PD).xlsx
+   - Any phone found in these lists is recorded in Remarks.
+6. Existing Pipedrive phone check
+   - Existing phone records are loaded from the Google Drive pd_phone folder.
+   - If a phone already exists under another Deal ID in a different deal stage, the number is treated as not allowed and recorded in Remarks.
+7. Duplicate check within the current run
+   - All valid phone numbers processed during the run are tracked across all files.
+   - If a phone appears under another Deal ID in the same run, it is marked as a duplicate in Remarks.
+   - The first Deal ID that used the phone is treated as the reference record for that number.
+8. Phone selection per row
+   - Only one phone number is retained per row.
+   - The retained number is the first valid and unique phone encountered based on the order of phone fields.
+   - If critical issues exist (opt-out, PD conflict, or duplicate), the phone number is removed and the issue remains documented in Remarks.
+9. Output generation
+   - A single timestamped Excel report is created in the output folder.
+   - Each processed input file appears as a separate sheet within the combined report.
+   - A carrier sheet is included for optional lookup.
+10. Carrier lookup behavior
+      - The Carrier column contains a VLOOKUP formula referencing the carrier sheet.
+      - Carrier values populate only when the carrier sheet is filled with lookup data.
 ---
 
 ## 🚀 Installation and Setup
