@@ -42,6 +42,28 @@ OUTPUT_CLEANED_FOLDER = "output"
 os.makedirs("output", exist_ok=True)
 os.makedirs(OUTPUT_CLEANED_FOLDER, exist_ok=True)
 
+# ---- COLUMN NORMALIZATION (put near the top of file, or inside main) ----
+COLUMN_ALIASES = {
+    # required columns
+    "Phone": "Person - Phone - Work",
+    "Contact person": "Deal - Contact person",
+    "ID": "Deal - ID",
+    "Stage": "Deal - Stage",
+    "Title": "Deal - Title",
+    "County": "Deal - County",
+    "Value": "Deal - Value",
+    "Owner": "Deal - Owner",
+}
+
+def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    # trims weird spaces (including non-breaking) and keeps your exact expected header style
+    cleaned = {c: re.sub(r"\s+", " ", str(c).replace("\u00a0", " ")).strip() for c in df.columns}
+    df = df.rename(columns=cleaned)
+
+    # apply alias mapping
+    df = df.rename(columns=lambda c: COLUMN_ALIASES.get(c, c))
+    return df
+
 # ----------------------- PHONE FIELDS -----------------------
 
 PHONE_FIELDS = [
@@ -211,14 +233,25 @@ def format_deal_county(deal_county):
 def main():
     seen_normalized_numbers = {}
     pd_phone_numbers = load_pd_phone_numbers()
-    input_files = glob(os.path.join(INPUT_FOLDER, "*.xlsx"))
+    input_files = (
+        glob(os.path.join(INPUT_FOLDER, "*.xlsx")) +
+        glob(os.path.join(INPUT_FOLDER, "*.csv"))
+    )
+
     cleaned_data = {}
     
     opt_out_cache = {}
 
     for file_path in tqdm(input_files, desc="Processing input files"):
         try:
-            df = pd.read_excel(file_path, engine='openpyxl', dtype=str)
+            if file_path.lower().endswith(".csv"):
+                try:
+                    df = pd.read_csv(file_path, dtype=str, encoding="utf-8")
+                except UnicodeDecodeError:
+                    df = pd.read_csv(file_path, dtype=str, encoding="cp1252")  # aka Windows-1252
+            else:
+                df = pd.read_excel(file_path, engine="openpyxl", dtype=str)
+            df = normalize_columns(df)
             if not check_required_columns(df, file_path):
                 continue
             df.fillna("", inplace=True)
@@ -275,6 +308,8 @@ def main():
                         if not raw_phones:
                             continue
                         for phone in map(str.strip, raw_phones.split(",")):
+                            if not phone:   # ✅ skip blanks caused by ",,,"
+                                continue
                             normalized = normalize_phone(phone)
                             if len(normalized) == 11 and normalized.startswith("1"):
                                 normalized = normalized[1:]
