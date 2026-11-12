@@ -4,7 +4,7 @@
 
 ---
 
-![Version](https://img.shields.io/badge/version-1.2.0-ffab4c?style=for-the-badge&logo=python&logoColor=white)
+![Version](https://img.shields.io/badge/version-1.5.1-ffab4c?style=for-the-badge&logo=python&logoColor=white)
 ![Python](https://img.shields.io/badge/python-3.9%2B-273946?style=for-the-badge&logo=python&logoColor=ffab4c)
 ![Status](https://img.shields.io/badge/status-active-273946?style=for-the-badge&logo=github&logoColor=ffab4c)
 
@@ -12,11 +12,13 @@
 
 ## ✨ Features
 
-- **Automatic Folder Management:** Creates and uses `for_processing` as the input folder for Excel files and `output` as the destination folder for cleaned results.
-- **Multi-Source Phone Number Handling:** Processes multiple phone fields from Pipedrive deal data including work, home, mobile, and archived numbers.
+- **Automatic Folder Management:** Creates and uses `for_processing` as the input folder for input files and `output` as the destination folder for cleaned results.
+- **Excel and CSV Input Support:** Accepts both `.xlsx` and `.csv` files, with automatic UTF-8/CP1252 fallback for CSV encoding.
+- **Column Name Flexibility:** Normalizes and aliases column headers so files exported directly from Pipedrive and files pulled via the Pipedrive API are both recognized (e.g., `Phone` → `Person - Phone - Work`, `ID` → `Deal - ID`).
+- **Multi-Source Phone Number Handling:** Processes multiple phone fields from Pipedrive deal data including work, home, mobile, numbered, and archived numbers.
 - **Normalization and Validation:** Normalizes phone numbers by stripping non-digit characters and standardizing to 10-digit US-style numbers (removes leading ‘1’ if present).
-- **Opt-Out List Integration:** Downloads and checks phone numbers against opt-out lists stored in Dropbox (e.g., `DNC (Cold-PD).xlsx`, `CallTextOut-7d (PD).xlsx`, and `CallOut-14d+TextOut-30d (Cold).xlsx`), marking flagged numbers with remarks.
-- **Existing Pipedrive Phone Cross-Check:** Fetches phone numbers from Dropbox’s pd_phone folder and flags numbers that exist in other deals with different stages, preventing duplication or conflicting marketing outreach.
+- **Opt-Out List Integration:** Downloads and checks phone numbers against opt-out lists stored in Google Drive (`PD Remove DNC.xlsx`, `Sly DNC.xlsx`, `C3.xlsx`, plus `CallTextOut-7d (PD).xlsx` or `CallOut-14d+TextOut-30d (Cold).xlsx` depending on deal stage), marking flagged numbers with remarks.
+- **Existing Pipedrive Phone Cross-Check:** Fetches phone numbers from the Google Drive `pd_phone` folder and flags numbers that exist in other deals with different stages, preventing duplication or conflicting marketing outreach.
 - **Duplicate Detection Within Input Files:** Tracks phone numbers processed within the current batch to avoid duplicates across deals, annotating duplicates with appropriate remarks.
 - **Detailed Remarks and Reporting:** Provides comprehensive remarks per record, noting phone format issues, opt-out presence, existing deal conflicts, and duplicate status to aid downstream decisions.
 - **Robust Error Handling:** Skips problematic rows with clear console warnings.
@@ -27,10 +29,11 @@
 ---
 ## 🧠 Logic Flow
 1. User provides files
-   - User places Excel files into the for_processing folder.
-   - Only .xlsx files are processed (CSV files are not included).
-2. Tool checks file requirements
-   - Each file must include the following columns:
+   - User places Excel (`.xlsx`) or CSV (`.csv`) files into the for_processing folder.
+   - CSV files are read as UTF-8, falling back to CP1252 if decoding fails.
+2. Tool normalizes and checks file requirements
+   - Column headers are trimmed of stray whitespace and aliased (e.g., `Phone` → `Person - Phone - Work`, `ID` → `Deal - ID`, `Contact person` → `Deal - Contact person`) so both Pipedrive exports and API pulls are recognized.
+   - Each file must include the following columns (after aliasing):
      - Deal - ID
      - Deal - Contact person
      - Deal - Owner
@@ -40,7 +43,7 @@
    - If required columns are missing, the file is skipped.
 3. Tool scans supported phone fields
    - Phone values are read from the supported phone columns.
-   - Multiple phone numbers within a cell are allowed if separated by commas.
+   - Multiple phone numbers within a cell are allowed if separated by commas; blank entries caused by extra commas are ignored.
 4. Phone numbers are normalized
    - Symbols and spaces are removed so only digits remain.
    - If a number becomes 11 digits starting with 1, the leading 1 is removed.
@@ -49,11 +52,15 @@
 5. Opt-out checking occurs first (Google Drive sources)
    - The tool downloads opt-out lists from Google Drive and compares each valid phone number.
    - The specific lists used depend on the deal stage:
-     - If Deal - Stage = Cold Deals - Priority 2
-       - DNC (Cold-PD).xlsx
+     - If Deal - Stage is one of: Cold Deals - Priority 2, Update Offer - TM Recycling, Document Auditing - Recycling, Generate Offer - Recycling, Large Recycled Lead
+       - PD Remove DNC.xlsx
+       - Sly DNC.xlsx
+       - C3.xlsx
        - CallOut-14d+TextOut-30d (Cold).xlsx
      - All other stages
-       - DNC (Cold-PD).xlsx
+       - PD Remove DNC.xlsx
+       - Sly DNC.xlsx
+       - C3.xlsx
        - CallTextOut-7d (PD).xlsx
    - Any phone found in these lists is recorded in Remarks.
 6. Existing Pipedrive phone check
@@ -90,70 +97,45 @@
 3. **Folder Structure**
 <pre>project/
 │
-├── for_processing/              # Input Excel files
-├── output/                       # Cleaned results
-├── config/                       # Configuration files
-│   ├── .env                       # Environment variables
-│   └── dropbox_config.py          # Dropbox connection logic
-├── tools/                       # Configuration files
-│   └── dropbox_token_generator.py         # Dropbox refresh token generator
-├── tool_ui.py                     # GUI interface
-├── pd_marketing_cleaning_tool.py  # Main script
-└── requirements.txt               # Dependencies
+├── for_processing/                # Input Excel/CSV files
+├── output/                        # Cleaned results
+├── config/                        # Configuration files
+│   ├── gdrive_client.py           # Google Drive connection logic
+│   ├── gdrive_credentials.json    # Google OAuth client credentials
+│   ├── gdrive_files.json          # Map of opt-out list names to Drive file IDs
+│   ├── gdrive_folders.json        # Map of Drive folder names to folder IDs
+│   └── token.json                 # Cached OAuth token (auto-generated)
+├── tool_ui.py                      # GUI interface
+├── pd_marketing_cleaning_tool.py   # Main script
+└── requirements.txt                # Dependencies
 </pre>
 
-Before running the tool, you need to set up your Dropbox app credentials and generate a **refresh token** to allow the app to access your Dropbox account securely.
+Before running the tool, you need to set up Google Drive API credentials so the app can securely download the opt-out lists and existing phone records.
 
 4. **Set Up Configuration**
 
-    Before running the tool, you need to set up your Dropbox app credentials and generate a **refresh token** to allow the app to access your Dropbox account securely.
+    4.1. **Create a Google Cloud project and OAuth credentials**
 
-    4.1. **Create a Dropbox App**
+   - Go to the [Google Cloud Console](https://console.cloud.google.com/) and create (or select) a project.
+   - Enable the **Google Drive API** for that project.
+   - Under **APIs & Services > Credentials**, create an **OAuth client ID** of type **Desktop app**.
+   - Download the generated credentials file and save it as `config/gdrive_credentials.json`.
 
-   - Go to the [Dropbox App Console](https://www.dropbox.com/developers/apps).
-   - Click **Create App**.
-   - Select **Scoped access** and **Full Dropbox** or **App folder** depending on your needs.
-   - Give your app a unique name.
-   - In the app settings, add this as your **Redirect URI**:  
-     `http://localhost:8080`  
-     *(Make sure it matches the `REDIRECT_URI` in your token generation script.)*
-   - Save the app.
+   4.2. **Configure file and folder IDs**
 
-   4.2. **Get Your App Credentials**
+   - In Google Drive, locate the opt-out list files (e.g., `PD Remove DNC.xlsx`, `Sly DNC.xlsx`, `C3.xlsx`, `CallTextOut-7d (PD).xlsx`, `CallOut-14d+TextOut-30d (Cold).xlsx`) and the `pd_phone` folder, and note each item's Drive file/folder ID (found in its sharing URL).
+   - Add the file name → file ID mappings to `config/gdrive_files.json`.
+   - Add the folder name → folder ID mapping (key `pd_phone`) to `config/gdrive_folders.json`.
 
-   - Copy your **App Key** and **App Secret** from the app settings.
-   - Paste these values into your `.env` file like so:
+   4.3. **Authorize the app**
 
-     ```env
-     DROPBOX_CONVERSION_APP_KEY=your_app_key_here
-     DROPBOX_CONVERSION_APP_SECRET=your_app_secret_here
-     ```
-
-   4.3. **Generate the Refresh Token**
-
-   - Use the included script (`generate_refresh_token.py`) to perform the OAuth flow and obtain a refresh token.
-   - Edit the script and fill in your app credentials at the top:
-      ```python
-     APP_KEY = "your_app_key_here"       # Dropbox App Key
-     APP_SECRET = "your_app_secret_here" # Dropbox App Secret
-     REDIRECT_URI = "http://localhost:8080"
-     ```
-   - Run the script locally (it will open a browser window and prompt for Dropbox login).
-   - After successful login, it will output the **refresh token** in the **dropbox_tokens.json** file.
-   - Copy the refresh token and add it to your `.env` file:
-
-     ```env
-     DROPBOX_CONVERSION_REFRESH_TOKEN=your_refresh_token_here
-     ```
-
-   4.4. **Place the `.env` file inside the `config/` folder**
-
-   - The tool will automatically load these environment variables from `config/.env`.
+   - The first time the tool runs, it will open a browser window prompting you to sign in with the Google account that has access to the Drive files above.
+   - After you approve access, the tool saves the resulting token to `config/token.json` and reuses it (refreshing automatically) on future runs.
 
 
 5. **Compile the tool**
    ```bash
-   pyinstaller --onefile --windowed --add-data "config/.env;config" tool_ui.py
+   pyinstaller --onefile --windowed --add-data "config/gdrive_credentials.json;config" tool_ui.py
 ---
 
 ## 🖥️ User Guide
@@ -176,11 +158,11 @@ Before running the tool, you need to set up your Dropbox app credentials and gen
   * If the list is wrong or empty:
       * Click Open Folder to open for_processing and adjust your files.
       * Then click Refresh in the tool to reload the list.
-  * Make sure the files from the dropbox are updated.
+  * Make sure the input files and Google Drive files are up to date before running the tool.
 
 > :pencil: Note:
 > * Only the files inside the input folder will be processed. 
-> * Only Excel files (.xlsx) are supported. 
+> * Excel (.xlsx) and CSV (.csv) files are supported. 
 
 
 
@@ -203,7 +185,7 @@ Before running the tool, you need to set up your Dropbox app credentials and gen
 >
 > * Do not close the “Processing” popup before it finishes — this can interrupt the process.
 > * You cannot run the tool twice at the same time.
-> * The tool will ignore any file that is not an Excel (.xlsx) file. 
+> * The tool will ignore any file that is not an Excel (.xlsx) or CSV (.csv) file. 
 
 ---
 
