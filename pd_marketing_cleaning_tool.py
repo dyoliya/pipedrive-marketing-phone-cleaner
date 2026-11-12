@@ -116,7 +116,7 @@ def normalize_phone(number):
 def load_opt_out_phone_numbers(excel_filenames=None):
     # Default Excel files if none specified
     if excel_filenames is None:
-        excel_filenames = ["DNC (Cold-PD).xlsx", "CallTextOut-7d (PD).xlsx"]
+        excel_filenames = ["PD Remove DNC.xlsx", "Sly DNC.xlsx", "C3.xlsx", "CallTextOut-7d (PD).xlsx"]
     
     numbers = defaultdict(set)  # phone -> set of filenames
 
@@ -263,16 +263,22 @@ def main():
                     remarks = ""
                     deal_id = row.get("Deal - ID", "")
                     deal_stage = row.get("Deal - Stage", "")
-                    if deal_stage == "Cold Deals - Priority 2":
+                    if deal_stage in {
+                        "Cold Deals - Priority 2",
+                        "Update Offer - TM Recycling",
+                        "Document Auditing - Recycling",
+                        "Generate Offer - Recycling",
+                        "Large Recycled Lead",
+                    }:
                         key = "cold"
                         excel_files_to_check = [
-                            "DNC (Cold-PD).xlsx",
+                            "PD Remove DNC.xlsx", "Sly DNC.xlsx", "C3.xlsx", # previously DNC Cold
                             "CallOut-14d+TextOut-30d (Cold).xlsx"
                         ]
                     else:
                         key = "normal"
                         excel_files_to_check = [
-                            "DNC (Cold-PD).xlsx",
+                            "PD Remove DNC.xlsx", "Sly DNC.xlsx", "C3.xlsx", # previously DNC Cold
                             "CallTextOut-7d (PD).xlsx"
                         ]
 
